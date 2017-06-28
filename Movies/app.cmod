@@ -1,0 +1,409 @@
+//  
+//  app.cmod
+//  Movies
+// 
+//  Created by Donald on 27/05/17.
+//  Copyright (c) 2017 Donald. All rights reserved.
+//  
+
+using library.seshaUI;
+
+seshaUI app     = new seshaUI();
+let MediaPlayer = AxWindowsMediaPlayer;
+
+bool ctrlKey;
+bool mute       = false;
+bool fitWin     = true;
+bool onTop      = false;
+bool hasStopped = false;
+
+string title;
+string state;
+string playing;
+
+var media = [];
+
+func main(args) {
+    app.singleinstance();
+    app.title = "Movies";
+    app.icon  = "icon.ico";
+    
+    setApplicationMenu();
+    MediaPlayer.volume(100);
+    //mainMenu.enableMenuItem("mnuAudioIncrease", false);
+    
+    MediaPlayer.fill(true);
+    MediaPlayer.stretchToFit(true);
+    
+    if args != null || "" {
+        MediaPlayer.initiate(args);
+    }
+    else {
+        MediaPlayer.initiate(null);
+    }
+    app.run();
+    //mainMenu.checkMenuItem("mnuVideoAlywaysOnFit", true);
+}
+
+func setApplicationMenu() {
+    Menu.setApplicationMenu = func () {`
+        <root>
+            <TopLevelMenu Name="mnuFile" Text="&amp;Media">
+                <MenuItem Name="mnuFileOpenFile" Text="Open File" ShortcutKeys="Ctrl+O" />
+                <MenuItem Name="mnuFileOpenFolder" Text="Open Folder" ShortcutKeys="Ctrl+F" />
+                <MenuItem Text="-" />
+                <MenuItem Name="mnuFileExit" Text="Quit..." ShortcutKeys="Ctrl+Q" />
+            </TopLevelMenu>
+            <TopLevelMenu Name="mnuPlayback" Text="&amp;Playback">
+                <MenuItem Name="mnuPlaybackPlay" Text="Play" ShortcutKeys="Ctrl+P"z />
+                <MenuItem Name="mnuPlaybackStop" Text="Stop" ShortcutKeys="Ctrl+S" />
+                <MenuItem Text="-" />
+                <MenuItem Name="mnuPlaybackNext" Text="Next" />
+                <MenuItem Name="mnuPlaybackPrevious" Text="Previous" />
+            </TopLevelMenu>
+            <TopLevelMenu Name="mnuAudio" Text="&amp;Audio">
+                <MenuItem Name="mnuAudioIncrease" Text="Increase Volume" Enabled="false" />
+                <MenuItem Name="mnuAudioDecrease" Text="Decrease Volume"  />
+                <MenuItem Name="mnuAudioMute" Text="Mute" ShortcutKeys="Ctrl+M" />
+            </TopLevelMenu>
+            <TopLevelMenu Name="mnuVideo" Text="&amp;Video">
+                <MenuItem Name="mnuVideoFullscreen" Text="Fullscreen" />
+                <MenuItem Name="mnuVideoAlywaysOnFit" Text="Always Fit Window" Checked="true" CheckOnClick="true" />
+                <MenuItem Name="mnuVideoAlywaysOnTop" Text="Always on Top" CheckOnClick="true" />
+            </TopLevelMenu>
+            <TopLevelMenu Name="mnuHelp" Text="&amp;Help">
+                <MenuItem Name="mnuHelpAbout" Text="About" />
+            </TopLevelMenu>
+        </root>
+    `}.Code();
+    Menu.BackgroundFromHTML = "#fff";
+    mainMenu.setXylonStudioMenuStyle();
+}
+
+func mnuFileOpenFile_click() {
+    OpenDialog OpenMedia = new OpenDialog();
+    OpenMedia.Filter     = "AVI Files|*.avi|MP4 Files|*.mp4|MP3 Files|*.mp3";
+    OpenMedia.Title      = "Load a Movie";
+    
+    if OpenMedia.Show() == DialogResults.OK {
+        MediaPlayer.url(OpenMedia.Path);
+    }
+}
+
+func mnuFileOpenFolder_click() {
+    BrowseDialog OpenFolder = new BrowseDialog();
+    OpenFolder.Description  = "Open a folder that contains media files";
+    if OpenFolder.Show() == DialogResults.OK {
+        var items = Path.GetFiles(OpenFolder.Path, "*.*", false);
+        items.forEach(func (item) {
+            if item.endsWith(".avi") || item.endsWith(".mp4") || item.endsWith(".mp3") {
+                if playing == null {
+                    playing = item;
+                }
+                media.push(item);
+            }
+        });
+    }
+    media.sort();
+    if media.length > 0 {
+        mnuPlaybackNext_click();
+    }
+}
+
+func mnuFileExit_click() {
+    app.destroy();
+}
+
+func mnuPlaybackPlay_click() {
+    if state == "Stopped" || state == "Paused" || state == "Fast forwarding" || state == "Rewinding" {
+        MediaPlayer.play();
+        hasStopped = false;
+    }
+    else {
+        MediaPlayer.pause();
+    }
+}
+
+func mnuPlaybackStop_click() {
+    MediaPlayer.stop();
+    hasStopped = true;
+}
+
+func mnuPlaybackNext_click() {
+    try {
+        var i = media.indexOf(playing)
+        i++;
+        i = i % media.length;
+        loadMedia(media[i]);
+    }
+    catch exception { }
+}
+
+func mnuPlaybackPrevious_click() {
+    try {
+        var i = media.indexOf(playing)
+        i--;
+        i = i % media.length;
+        loadMedia(media[i]);
+    }
+    catch exception { }
+}
+
+func mnuAudioIncrease_click() {
+    int volume = MediaPlayer.getVolume;
+    int pos    = volume.ToString()[1];
+    
+    if pos <= 4 && pos != 0 {
+        volume = Number(volume.ToString().replace(pos, 0));
+    }
+    else if pos == 5 {
+        volume += 5;
+    }
+    else if pos == 6 {
+        volume += 4;
+    }
+    else if pos == 7 {
+        volume += 3;
+    }
+    else if pos == 8 {
+        volume += 2;
+    }
+    else if pos == 9 {
+        volume += 1;
+    }
+    
+    if !(volume > 90) {
+        volume += 10;
+        try {
+            MediaPlayer.volume(volume);
+        }
+        catch exception { }
+    }
+    
+    if volume == 100 {
+        mainMenu.enableMenuItem("mnuAudioIncrease", false);
+    }
+    else if volume != 0 {
+        mainMenu.enableMenuItem("mnuAudioDecrease", true);
+    }
+    else {
+        mainMenu.enableMenuItem("mnuAudioIncrease", true);
+    }
+}
+
+func mnuAudioDecrease_click() {
+    int volume = MediaPlayer.getVolume;
+    int pos    = volume.ToString()[1];
+    
+    if pos <= 4 && pos != 0 {
+        volume = Number(volume.ToString().replace(pos, 0));z
+    }
+    else if pos == 5 {
+        volume += 5;
+    }
+    else if pos == 6 {
+        volume += 4;
+    }
+    else if pos == 7 {
+        volume += 3;
+    }
+    else if pos == 8 {
+        volume += 2;
+    }
+    else if pos == 9 {
+        volume += 1;
+    }
+    
+    if !(volume < 10) {
+        volume -= 10;
+        try {
+            MediaPlayer.volume(volume);
+        }
+        catch exception { }
+    }
+    
+    if volume == 100 {
+        mainMenu.enableMenuItem("mnuAudioIncrease", false);
+    }
+    else if volume == 0 {
+        mainMenu.enableMenuItem("mnuAudioDecrease", false);
+    }
+    else {
+        mainMenu.enableMenuItem("mnuAudioIncrease", true);
+    }
+}
+
+func mnuAudioMute_click() {
+    if mute == false {
+        mute = true;
+        MediaPlayer.mute(true);
+        mainMenu.checkMenuItem("mnuAudioMute", true);
+    }
+    else {
+        mute = false;
+        MediaPlayer.mute(false);
+        mainMenu.checkMenuItem("mnuAudioMute", false);
+    }
+}
+
+func mnuVideoFullscreen_click() {
+    MediaPlayer.fullscreen(true);
+}
+
+func mnuVideoAlywaysOnTop_click() {
+    if onTop == false {
+        onTop       = true;
+        app.topmost = true;
+        //mainMenu.checkMenuItem("mnuVideoAlywaysOnTop", true);
+    }
+    else {
+        onTop       = false;
+        app.topmost = false;
+        //mainMenu.checkMenuItem("mnuVideoAlywaysOnTop", false);
+    }
+}
+
+func mnuVideoAlywaysOnFit_click() {
+    if fitWin == false {
+        fitWin = true;
+        MediaPlayer.stretchToFit(true);
+        //mainMenu.checkMenuItem("mnuVideoAlywaysOnFit", true);
+    }
+    else {
+        fitWin = false;
+        MediaPlayer.stretchToFit(false);
+        //mainMenu.checkMenuItem("mnuVideoAlywaysOnFit", false);
+    }
+}
+
+func mnuHelpAbout_click() {
+    MessageBox.Show("\"Movies\" is a simple Media Player based on Windows Media Player\n \nVersion 1.0.0.0\n \nAuthor: Donald Pakkies", "About Movies", MessageButtons.OK);
+}
+
+func loadMedia(mediaFile) {
+    playing = mediaFile;
+    MediaPlayer.url(mediaFile);
+}
+
+func application_onReady() {
+    app.onExit = "close();";
+}
+
+func application_onInstance(url) {
+    MediaPlayer.url(url);
+    app.activate();
+}
+
+func AxWindowsMediaPlayer_CurrentItemChange(name) {
+    title = name;
+}
+
+func AxWindowsMediaPlayer_StatusChange(status) {
+    if status.startsWith("Playing '") || status == "Paused" || status == "Fast forwarding" || status == "Rewinding" {
+        app.title = title;
+    }
+    else if status == "Stopped" {
+        if hasStopped == false && media.length > 0 && media.indexOf(playing) != media.slice(-1)[0] {
+            mnuPlaybackNext_click();
+        }
+        app.title = "Movies";
+    }
+    else {
+        app.title = status;
+    }
+    
+    state = status;
+    
+    if state.startsWith("Playing '") {
+        mainMenu.renameMenuItem("mnuPlaybackPlay", "Pause");
+    }
+    else {
+        mainMenu.renameMenuItem("mnuPlaybackPlay", "Play");
+    }
+}
+
+func mainMenu_KeyDown(key) {
+    if key == "ControlKey" {
+        ctrlKey = true;
+    }
+    
+    if ctrlKey == true && key == "O" {
+        //Ctrl+O
+        ctrlKey = false;
+        mnuFileOpenFile_click();
+    }
+    else if ctrlKey == true && key == "F" {
+        //Ctrl+F
+        ctrlKey = false;
+        mnuFileOpenFolder_click();
+    }
+    else if ctrlKey == true && key == "Q" {
+        //Ctrl+Q
+        ctrlKey = false;
+        mnuFileExit_click();
+    }
+    else if ctrlKey == true && key == "P" {
+        //Ctrl+P
+        ctrlKey = false;
+        mnuPlaybackPlay_click();
+    }
+    else if ctrlKey == true && key == "S" {
+        //Ctrl+S
+        ctrlKey = false;
+        mnuPlaybackStop_click();
+    }
+    else if ctrlKey == true && key == "M" {
+        //Ctrl+M
+        ctrlKey = false;
+        mnuAudioMute_click();
+    }
+    else if key == "Space" {
+        //Space
+        mnuPlaybackPlay_click();
+    }
+}
+
+func AxWindowsMediaPlayer_KeyDownEvent(key) {
+    if key == 17 { 
+        ctrlKey = true; 
+    }
+    
+    if ctrlKey == true && key == 79 {
+        //Ctrl+O
+        ctrlKey = false;
+        mnuFileOpenFile_click();
+    }
+    else if ctrlKey == true && key == 70 {
+        //Ctrl+F
+        ctrlKey = false;
+        mnuFileOpenFolder_click();
+    }
+    else if ctrlKey == true && key == 81 {
+        //Ctrl+Q
+        ctrlKey = false;
+        mnuFileExit_click();
+    }
+    else if ctrlKey == true && key == 80 {
+        //Ctrl+P
+        ctrlKey = false;
+        mnuPlaybackPlay_click();
+    }
+    else if ctrlKey == true && key == 83 {
+        //Ctrl+S
+        ctrlKey = false;
+        mnuPlaybackStop_click();
+    }
+    else if ctrlKey == true && key == 77 {
+        //Ctrl+M
+        ctrlKey = false;
+        mnuAudioMute_click();
+    }
+    else if key == 32 {
+        //space
+        mnuPlaybackPlay_click();
+    }
+}
+
+func close() {
+    app.destroy();
+}
