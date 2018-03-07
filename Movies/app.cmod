@@ -24,7 +24,10 @@ string playing;
 var media = [];
 
 func main(args) {
+
+    // make the app run as a single instance application
     app.singleinstance();
+    
     app.title = "Movies";
     app.icon  = "icon.ico";
     
@@ -32,19 +35,24 @@ func main(args) {
     MediaPlayer.volume(100);
     //mainMenu.enableMenuItem("mnuAudioIncrease", false);
     
+    // make the windows media player control fill all the edges of the app
     MediaPlayer.fill(true);
     MediaPlayer.stretchToFit(true);
     
+    // if a media file launched the app, then load that media file
     if args != null || "" {
         MediaPlayer.initiate(args);
     }
     else {
         MediaPlayer.initiate(null);
     }
+    
+    // run the app
     app.run();
     //mainMenu.checkMenuItem("mnuVideoAlywaysOnFit", true);
 }
 
+// set the main menu
 func setApplicationMenu() {
     Menu.setApplicationMenu = func () {`
         <root>
@@ -80,6 +88,7 @@ func setApplicationMenu() {
     mainMenu.setXylonStudioMenuStyle();
 }
 
+// main menu events
 func mnuFileOpenFile_click() {
     OpenDialog OpenMedia = new OpenDialog();
     OpenMedia.Filter     = "AVI Files|*.avi|MP4 Files|*.mp4|MP3 Files|*.mp3";
